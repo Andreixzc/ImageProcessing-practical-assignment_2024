@@ -1,0 +1,68 @@
+import pandas as pd
+import pickle
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.metrics import accuracy_score, confusion_matrix
+from xgboost import XGBClassifier
+from sklearn.preprocessing import LabelEncoder, MinMaxScaler
+
+# Carregar os dados dos momentos de Hu do arquivo CSV
+hu_moments_data = pd.read_csv('hu_moments.csv')
+
+# Separar os caminhos das imagens e os rótulos das células
+X_paths = hu_moments_data['cell_path']
+y_labels = hu_moments_data['cell_label']
+
+# Extrair as características (momentos de Hu) como um DataFrame
+X = hu_moments_data.drop(['cell_path', 'cell_label'], axis=1)
+
+# Definir as classes como binárias: 'Positive' para células com doença e 'Negative' para células sem doença
+y_binary_labels = y_labels.apply(lambda x: 'Positive' if x != 'Negative for intraepithelial lesion' else 'Negative')
+
+# Converter os rótulos binários das células para valores numéricos usando LabelEncoder
+label_encoder = LabelEncoder()
+y_binary = label_encoder.fit_transform(y_binary_labels)
+
+# Dividir os dados em conjuntos de treinamento e teste
+X_train, X_test, y_train, y_test = train_test_split(X, y_binary, test_size=0.2, random_state=42)
+
+# Inicializar o classificador XGBoost
+xgb_classifier = XGBClassifier()
+
+# Definir a grade de hiperparâmetros a serem testados
+param_grid = {
+    'n_estimators': [100, 200, 300],
+    'max_depth': [3, 5, 7],
+    'learning_rate': [0.01, 0.1, 0.2],
+    'subsample': [0.7, 0.8, 0.9],
+    'colsample_bytree': [0.7, 0.8, 0.9],
+}
+
+# Inicializar o GridSearchCV
+grid_search = GridSearchCV(estimator=xgb_classifier, param_grid=param_grid, cv=3, scoring='accuracy', n_jobs=-1)
+
+# Executar a busca em grade nos dados de treinamento
+grid_search.fit(X_train, y_train)
+
+# Obter os melhores hiperparâmetros encontrados
+best_params = grid_search.best_params_
+print("Melhores hiperparâmetros encontrados:", best_params)
+
+# Treinar o modelo com os melhores hiperparâmetros
+best_xgb_classifier = XGBClassifier(**best_params)
+best_xgb_classifier.fit(X_train, y_train)
+
+# Fazer previsões no conjunto de teste
+y_pred = best_xgb_classifier.predict(X_test)
+
+# Calcular a acurácia do classificador
+accuracy = accuracy_score(y_test, y_pred)
+print("Acurácia do classificador XGBoost (Binário) com melhores hiperparâmetros:", accuracy)
+
+# Mostrar a matriz de confusão
+conf_matrix = confusion_matrix(y_test, y_pred)
+print("Matriz de Confusão (Binário) com melhores hiperparâmetros:")
+print(conf_matrix)
+
+# Salvar o modelo treinado
+with open('modelo_xgboost_binary.pkl', 'wb') as f:
+    pickle.dump(best_xgb_classifier, f)
