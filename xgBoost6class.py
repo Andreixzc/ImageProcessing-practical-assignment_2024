@@ -3,7 +3,10 @@ from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import accuracy_score, confusion_matrix
 from xgboost import XGBClassifier
 from sklearn.preprocessing import LabelEncoder
+from skl2onnx import convert_sklearn
+from skl2onnx.common.data_types import FloatTensorType
 import pickle
+import onnx
 
 # Carregar os dados dos momentos de Hu do arquivo CSV
 hu_moments_data = pd.read_csv('hu_moments.csv')
@@ -60,6 +63,16 @@ conf_matrix = confusion_matrix(y_test, y_pred)
 print("Matriz de Confusão com melhores hiperparâmetros:")
 print(conf_matrix)
 
-# Salvar o modelo treinado
+# Salvar o modelo treinado em formato pkl
 with open('modelo_xgboost_multiclass.pkl', 'wb') as f:
     pickle.dump(best_xgb_classifier, f)
+
+# Convertendo o modelo para o formato ONNX
+initial_type = [('float_input', FloatTensorType([None, X_train.shape[1]]))]
+onnx_model = convert_sklearn(best_xgb_classifier, initial_types=initial_type)
+
+# Salvar o modelo ONNX em um arquivo
+with open('modelo_xgboost_multiclass.onnx', 'wb') as f:
+    f.write(onnx_model.SerializeToString())
+
+print("Modelo salvo em formato ONNX")
