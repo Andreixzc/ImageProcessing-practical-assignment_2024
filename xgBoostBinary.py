@@ -26,8 +26,7 @@ label_encoder = LabelEncoder()
 y_binary = label_encoder.fit_transform(y_binary_labels)
 
 # Dividir os dados em conjuntos de treinamento e teste
-X_train, X_test, y_train, y_test = train_test_split(X, y_binary, test_size=0.2, random_state=42)
-
+X_train, X_test, y_train, y_test = train_test_split(X, y_binary, test_size=0.2, random_state=42 ,stratify=y_binary)
 # Inicializar o classificador XGBoost
 xgb_classifier = XGBClassifier()
 
