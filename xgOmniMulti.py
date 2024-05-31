@@ -23,7 +23,7 @@ update_registered_converter(
 use_grid_search = False
 
 # Carregar os dados dos momentos de Hu do arquivo CSV
-hu_moments_data = pd.read_csv('hu_moments.csv')
+hu_moments_data = pd.read_csv('hu_moments_all_channels.csv')
 
 # Separar os caminhos das imagens e os rótulos das células
 X_paths = hu_moments_data['cell_path']
