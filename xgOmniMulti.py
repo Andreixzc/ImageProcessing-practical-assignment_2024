@@ -1,12 +1,23 @@
 import pandas as pd
-import pickle
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import accuracy_score, confusion_matrix
 from xgboost import XGBClassifier
-from sklearn.preprocessing import LabelEncoder, MinMaxScaler
+from sklearn.preprocessing import LabelEncoder
 from skl2onnx import convert_sklearn
 from skl2onnx.common.data_types import FloatTensorType
-import onnx
+from skl2onnx.common.shape_calculator import calculate_linear_classifier_output_shapes
+from onnxmltools.convert.xgboost.operator_converters.XGBoost import convert_xgboost
+from skl2onnx import update_registered_converter
+import pickle
+
+# Atualizar o conversor registrado para o XGBClassifier
+update_registered_converter(
+    XGBClassifier, 
+    'XGBoostXGBClassifier',
+    calculate_linear_classifier_output_shapes, 
+    convert_xgboost,
+    options={'nocl': [True, False], 'zipmap': [True, False, 'columns']}
+)
 
 # Parâmetro para controlar o uso do GridSearchCV
 use_grid_search = False
@@ -21,15 +32,15 @@ y_labels = hu_moments_data['cell_label']
 # Extrair as características (momentos de Hu) como um DataFrame
 X = hu_moments_data.drop(['cell_path', 'cell_label'], axis=1)
 
-# Definir as classes como binárias: 'Positive' para células com doença e 'Negative' para células sem doença
-y_binary_labels = y_labels.apply(lambda x: 'Positive' if x != 'Negative for intraepithelial lesion' else 'Negative')
+# Renomear as características para seguir o padrão esperado pelo conversor
+X.columns = [f'f{idx}' for idx in range(X.shape[1])]
 
-# Converter os rótulos binários das células para valores numéricos usando LabelEncoder
+# Converter os rótulos das células para valores numéricos usando LabelEncoder
 label_encoder = LabelEncoder()
-y_binary = label_encoder.fit_transform(y_binary_labels)
+y = label_encoder.fit_transform(y_labels)
 
 # Dividir os dados em conjuntos de treinamento e teste
-X_train, X_test, y_train, y_test = train_test_split(X, y_binary, test_size=0.2, random_state=42, stratify=y_binary)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
 # Inicializar o classificador XGBoost
 xgb_classifier = XGBClassifier()
@@ -63,16 +74,24 @@ if use_grid_search:
 
     # Calcular a acurácia do classificador
     accuracy = accuracy_score(y_test, y_pred)
-    print("Acurácia do classificador XGBoost (Binário) com melhores hiperparâmetros:", accuracy)
+    print("Acurácia do classificador XGBoost com melhores hiperparâmetros:", accuracy)
 
     # Mostrar a matriz de confusão
     conf_matrix = confusion_matrix(y_test, y_pred)
-    print("Matriz de Confusão (Binário) com melhores hiperparâmetros:")
+    print("Matriz de Confusão com melhores hiperparâmetros:")
     print(conf_matrix)
 
     # Salvar o modelo treinado em formato pkl
-    with open('modelo_xgboost_binary.pkl', 'wb') as f:
+    with open('modelo_xgboost_multiclass.pkl', 'wb') as f:
         pickle.dump(best_xgb_classifier, f)
+
+    # Convertendo o modelo para o formato ONNX
+    initial_type = [('float_input', FloatTensorType([None, X_train.shape[1]]))]
+    onnx_model = convert_sklearn(best_xgb_classifier, initial_types=initial_type, target_opset={'': 12, 'ai.onnx.ml': 2})
+
+    # Salvar o modelo ONNX em um arquivo
+    with open('modelo_xgboost_multiclass.onnx', 'wb') as f:
+        f.write(onnx_model.SerializeToString())
 
 else:
     # Treinar o modelo sem GridSearchCV
@@ -83,9 +102,23 @@ else:
 
     # Calcular a acurácia do classificador
     accuracy = accuracy_score(y_test, y_pred)
-    print("Acurácia do classificador XGBoost (Binário):", accuracy)
+    print("Acurácia do classificador XGBoost:", accuracy)
 
     # Mostrar a matriz de confusão
     conf_matrix = confusion_matrix(y_test, y_pred)
-    print("Matriz de Confusão (Binário):")
+    print("Matriz de Confusão:")
     print(conf_matrix)
+
+    # Salvar o modelo treinado em formato pkl
+    with open('modelo_xgboost_multiclass.pkl', 'wb') as f:
+        pickle.dump(xgb_classifier, f)
+
+    # Convertendo o modelo para o formato ONNX
+    initial_type = [('float_input', FloatTensorType([None, X_train.shape[1]]))]
+    onnx_model = convert_sklearn(xgb_classifier, initial_types=initial_type, target_opset={'': 12, 'ai.onnx.ml': 2})
+
+    # Salvar o modelo ONNX em um arquivo
+    with open('modelo_xgboost_multiclass.onnx', 'wb') as f:
+        f.write(onnx_model.SerializeToString())
+
+print("Modelo salvo em formato ONNX")
