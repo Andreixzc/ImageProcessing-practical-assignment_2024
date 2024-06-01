@@ -1,0 +1,12 @@
+Características: Momentos de Hu (4*7 características).
+Classificador raso: XGBoost.
+Classificador profundo: EfficientNet.
+
+
+Instâncias por classe:
+ASC-H =  341 instâncias. 
+ASC-US =  126 instâncias.
+HSIL =  321  instâncias.
+LSIL =  388  instâncias.
+Negative for intraepithelial lesion =  902 instâncias.
+SCC 43 instâncias.
