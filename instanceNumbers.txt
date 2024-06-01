@@ -1,6 +1,0 @@
-ASC-H =  341 instancies 
-ASC-US =  126 instancies
-HSIL =  321  instancies
-LSIL =  388  instancies
-Negative for intraepithelial lesion =  902 instancies
-SCC 43 instancies
