@@ -17,10 +17,13 @@ data['label'] = data['label'].apply(map_label)
 # Contar a quantidade de classes com 0 e 1
 class_counts = data['label'].value_counts()
 
-# Salvar as alterações de volta no arquivo CSV
-data.to_csv(file_path, index=False)
+# Definir o novo caminho do arquivo
+new_file_path = 'hu_moments_modified.csv'
 
-print("Valores da coluna 'label' foram alterados e o arquivo foi salvo com sucesso.")
+# Salvar as alterações no novo arquivo CSV
+data.to_csv(new_file_path, index=False)
+
+print("Valores da coluna 'label' foram alterados e o novo arquivo foi salvo com sucesso.")
 print("Contagem das classes:")
 print("Classe 0:", class_counts[0])
 print("Classe 1:", class_counts[1])

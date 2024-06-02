@@ -7,6 +7,9 @@ from torch.utils.data import DataLoader, Dataset
 from PIL import Image
 import pandas as pd
 import os
+import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+import numpy as np
 
 # Defina seu próprio Dataset para carregar as imagens e labels a partir do CSV
 class CustomDataset(Dataset):
@@ -70,10 +73,16 @@ optimizer = optim.Adam(model.parameters(), lr=0.001)
 criterion = nn.CrossEntropyLoss()
 
 # Função para treinar o modelo
-def train_model(model, train_loader, criterion, optimizer, num_epochs=10):
-    model.train()
+def train_model(model, train_loader, test_loader, criterion, optimizer, num_epochs=10):
+    train_acc_history = []
+    test_acc_history = []
+
     for epoch in range(num_epochs):
+        model.train()
         running_loss = 0.0
+        correct_train = 0
+        total_train = 0
+
         for inputs, labels in train_loader:
             inputs, labels = inputs.to(device), labels.to(device)
             
@@ -85,15 +94,42 @@ def train_model(model, train_loader, criterion, optimizer, num_epochs=10):
             optimizer.step()
             
             running_loss += loss.item() * inputs.size(0)
-        
-        epoch_loss = running_loss / len(train_loader.dataset)
-        print(f'Epoch {epoch + 1}/{num_epochs}, Loss: {epoch_loss:.4f}')
+            _, predicted = torch.max(outputs, 1)
+            total_train += labels.size(0)
+            correct_train += (predicted == labels).sum().item()
 
-# Função para avaliar o modelo
+        epoch_loss = running_loss / len(train_loader.dataset)
+        epoch_acc_train = correct_train / total_train
+        train_acc_history.append(epoch_acc_train)
+        
+        # Avalia no conjunto de teste
+        model.eval()
+        correct_test = 0
+        total_test = 0
+
+        with torch.no_grad():
+            for inputs, labels in test_loader:
+                inputs, labels = inputs.to(device), labels.to(device)
+                outputs = model(inputs)
+                _, predicted = torch.max(outputs, 1)
+                total_test += labels.size(0)
+                correct_test += (predicted == labels).sum().item()
+        
+        epoch_acc_test = correct_test / total_test
+        test_acc_history.append(epoch_acc_test)
+        
+        print(f'Epoch {epoch + 1}/{num_epochs}, Loss: {epoch_loss:.4f}, Train Acc: {epoch_acc_train:.4f}, Test Acc: {epoch_acc_test:.4f}')
+
+    return train_acc_history, test_acc_history
+
+# Função para avaliar o modelo e plotar a matriz de confusão
 def evaluate_model(model, test_loader):
     model.eval()
     correct = 0
     total = 0
+    all_labels = []
+    all_predicted = []
+
     with torch.no_grad():
         for inputs, labels in test_loader:
             inputs, labels = inputs.to(device), labels.to(device)
@@ -102,12 +138,34 @@ def evaluate_model(model, test_loader):
             _, predicted = torch.max(outputs, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
+            all_labels.extend(labels.cpu().numpy())
+            all_predicted.extend(predicted.cpu().numpy())
     
     accuracy = correct / total
     print(f'Accuracy: {accuracy:.4f}')
 
+    # Plotar a matriz de confusão
+    cm = confusion_matrix(all_labels, all_predicted)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=dataset.label_to_idx.keys())
+    disp.plot(cmap=plt.cm.Blues)
+    plt.show()
+
+# Função para plotar os gráficos de aprendizagem
+def plot_learning_curves(train_acc_history, test_acc_history):
+    epochs = range(1, len(train_acc_history) + 1)
+    plt.plot(epochs, train_acc_history, 'bo-', label='Training accuracy')
+    plt.plot(epochs, test_acc_history, 'ro-', label='Testing accuracy')
+    plt.title('Training and Testing accuracy')
+    plt.xlabel('Epochs')
+    plt.ylabel('Accuracy')
+    plt.legend()
+    plt.show()
+
 # Treine o modelo
-train_model(model, train_loader, criterion, optimizer, num_epochs=10)
+train_acc_history, test_acc_history = train_model(model, train_loader, test_loader, criterion, optimizer, num_epochs=10)
 
 # Avalie o modelo
 evaluate_model(model, test_loader)
+
+# Plote os gráficos de aprendizagem
+plot_learning_curves(train_acc_history, test_acc_history)
