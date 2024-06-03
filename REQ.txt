@@ -1,0 +1,4 @@
+conda install sklearn
+conda install matplotlib
+conda install pandas
+E depois baixar o pytorch com cuda.
