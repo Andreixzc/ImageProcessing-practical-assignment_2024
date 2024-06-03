@@ -169,8 +169,6 @@ def plot_learning_curves(train_acc_history, test_acc_history):
     plt.legend()
     plt.show()
 
-# Treine o modelo
-train_acc_history, test_acc_history = train_model(model, train_loader, test_loader, criterion, optimizer, num_epochs=10)
 
 # Avalie o modelo
 evaluate_model(model, test_loader)
