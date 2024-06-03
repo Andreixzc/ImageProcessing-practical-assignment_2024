@@ -17,3 +17,10 @@ HSIL
 LSIL 
 Negative for intraepithelial lesion 
 SCC 
+
+28-05-2024/ASC-H 
+28-05-2024/ASC-US 
+28-05-2024/HSIL 
+28-05-2024/LSIL 
+28-05-2024/Negative for intraepithelial lesion 
+28-05-2024/SCC 
